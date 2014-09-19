@@ -9,7 +9,7 @@
 <body>
 <canvas id="render" width="960" height="960"></canvas>
 <div id="controls">
-	<p>Version 0.3</p>
+	<p>Version 0.4</p>
 	<label for="maxDepth">Max depth</label>
 	<select id="maxDepth" name="maxDepth">
 		<option value="1">1</option>
@@ -203,7 +203,7 @@ function centre(depth, x0,y0, x1,y1, x2,y2) {
 		wc = f(depth, c, a, b, c2, a2, b2),
 		norm = wa + wb + wc;
 	// HACK
-	if (norm < 1E-16) { wa = wb = wc = 1; norm = 3; }
+	if (Math.abs(norm) < 1E-16) { wa = wb = wc = 1; norm = 3; }
 	return {'x': (wa * x0 + wb * x1 + wc * x2) / norm, 'y': (wa * y0 + wb * y1 + wc * y2) / norm };
 }
 
