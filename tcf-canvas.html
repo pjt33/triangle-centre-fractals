@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		#render { float: left; }
+		#controls { float: right; width: 640px; }
+	</style>
+</head>
+<body>
+<canvas id="render" width="960" height="960"></canvas>
+<div id="controls">
+	<p>Version 0.3</p>
+	<label for="maxDepth">Max depth</label>
+	<select id="maxDepth" name="maxDepth">
+		<option value="1">1</option>
+		<option value="2">2</option>
+		<option value="3">3</option>
+		<option value="4">4</option>
+		<option value="5">5</option>
+		<option value="6">6</option>
+		<option value="7">7</option>
+		<option value="8">8</option>
+		<option value="9" selected>9</option>
+	</select>
+	<br />
+	<label for="opacity">Opacity</label>
+	<select id="opacity" name="opacity">
+		<option value="0.05" selected>0.05</option>
+		<option value="0.1">0.1</option>
+		<option value="0.15">0.15</option>
+		<option value="0.2">0.2</option>
+		<option value="0.25">0.25</option>
+		<option value="0.3">0.3</option>
+		<option value="0.35">0.35</option>
+		<option value="0.4">0.4</option>
+		<option value="0.45">0.45</option>
+		<option value="0.5">0.5</option>
+	</select>
+	<br />
+	<label for="scale">Scale</label>
+	<select id="scale" name="scale">
+		<option value="400">400</option>
+		<option value="480" selected>480</option>
+	</select>
+	<br />
+	<label for="prescaled">Prescaled</label>
+	<input id="prescaled" name="prescaled" type="checkbox" />
+	<br />
+	<label for="c0">C0</label>
+	<select id="c0" name="c0"></select>
+	<br />
+	<label for="c1">C1</label>
+	<select id="c1" name="c1"></select>
+	<br />
+	<label for="Pattern">Pattern</label>
+	<select id="pattern" name="pattern">
+		<option value="[0]">C0 only (0)</option>
+		<option value="[0,1]">Alternating (0, 1)</option>
+		<option value="[1,0]">Alternating (1, 0)</option>
+		<option value="[0,1,0,0,1,0,1,0,0,1,0,0,1,0,1,0]">Fibonacci tiling</option>
+		<option value="[1,0,1,1,0,1,0,1,1,0,1,1,0,1,0,1]">Fibonacci tiling (inv)</option>
+		<option value="[0,1,0,0,1,1,0,1,0,0,1,0,1,1]">Linus sequence</option>
+		<option value="[1,0,1,1,0,0,1,0,1,1,0,1,0,0]">Linus sequence (inv)</option>
+	</select>
+	<br />
+	<input type="button" id="go" value="Render" />
+
+	<p>NB The "Prescaled" option is to help identify numerical issues. If toggling that and changing the scale causes massive differences, it's obviously running into numerical problems. If the image doesn't have symmetry along the three altitudes of the original triangle, that would also imply numerical problems.</p>
+</div>
+<script type="text/javascript">
+// fn takes (a, b, c, a2, b2, c2) where a,b,c are for convenience and a2 etc. are their squares.
+// Use the squares where possible, as they're more accurate.
+var centreRegistry = {};
+
+function registerCentre(id, name, barycentric, fn) {
+	addCentreToSelect('c0', id, id + ' ' + name);
+	addCentreToSelect('c1', id, id + ' ' + name);
+	centreRegistry[id] = fn;
+	fn.barycentric = barycentric;
+}
+
+function addCentreToSelect(selectId, value, text) {
+	var sel = document.getElementById(selectId),
+		opt = document.createElement('option');
+	opt.value = value;
+	opt.innerText = text;
+	sel.appendChild(opt);
+}
+
+registerCentre("X1", "Incentre", false, function(){ return 1 });
+registerCentre("X2", "Centroid", true, function(){ return 1 });
+registerCentre("X3", "Circumcentre", true, function(a,b,c,a2,b2,c2){ return a2 * (b2 + c2 - a2) });
+//registerCentre("X4", "Orthocentre", true, function(a,b,c,a2,b2,c2){ return 1 / (a2 - b2 - c2); });
+registerCentre("X5", "Nine-point centre", true, function(a,b,c,a2,b2,c2){ return a2 * (b2 + c2) - (b2 - c2) * (b2 - c2) });
+registerCentre("X6", "Symmedian point", true, function(a,b,c,a2,b2,c2){ return a2 });
+registerCentre("X7", "Gergonne", true, function(a,b,c,a2,b2,c2){ return 1 / (b + c - a) });
+registerCentre("X8", "Nagel", true, function(a,b,c,a2,b2,c2){ return b + c - a });
+registerCentre("X9", "Mittenpunkt", false, function(a,b,c,a2,b2,c2){ return b + c - a });
+registerCentre("X10", "Spieker centre", true, function(a,b,c,a2,b2,c2){ return b + c });
+registerCentre("X11", "Feuerbach point", true, function(a,b,c,a2,b2,c2){ return (b + c - a)*(b - c)*(b - c) });
+registerCentre("X12", "Isogonal conjugate of X60", true, function(a,b,c,a2,b2,c2){ return (b + c)*(b + c)/(b + c - a) });
+registerCentre("X19", "Clawson point", false, function(a,b,c,a2,b2,c2){ return 1 / (b2 + c2 - a2) });
+registerCentre("X20", "De Longchamps point", true, function(a,b,c,a2,b2,c2){ return -3*a2*a2 + 2*a2*(b2 + c2) + (b2 - c2)*(b2 - c2) });
+registerCentre("X21", "Schiffler point", false, function(a,b,c,a2,b2,c2){ return (b+c-a) / (b+c) });
+//registerCentre("X22", "Exeter point", true, function(a,b,c,a2,b2,c2){ return a2 * (b2 * b2 + c2 * c2 - a2 * a2) });
+registerCentre("X23", "Far-out point", true, function(a,b,c,a2,b2,c2){ return a2 * (b2 * b2 + c2 * c2 - a2 * a2 - b2 * c2) });
+registerCentre("X25", "Homothetic center of orthic and tangential triangles", true, function(a,b,c,a2,b2,c2){ return a2 / (b2 + c2 - a2) });
+registerCentre("X26", "Circumcentre of the tangential triangle", true, function(a,b,c,a2,b2,c2){ return a2*(a2 - b2 - c2) + a2/2 * (b2*((c2 + a2 - b2)*(c2 + a2 - b2) / (c2*a2)) + c2*((b2 + a2 - c2)*(b2 + a2 - c2) / (b2*a2)) - a2*((b2 + c2 - a2)*(b2 + c2 - a2) / (b2*c2))) });
+registerCentre("X27", "Cevapoint of X4 and X19", true, function(a,b,c,a2,b2,c2){ return 1 / ((b + c)*(b2 + c2 - a2)) });
+// TODO X28 should be expressible
+// TODO X29 should be expressible
+//registerCentre("X30", "Euler infinity point", true, function(a,b,c,a2,b2,c2){ return 2*a2*a2 - (b2 - c2)*(b2 - c2) - a2*(b2 + c2) });
+registerCentre("X31", "2nd power point", false, function(a,b,c,a2,b2,c2){ return a2 });
+registerCentre("X32", "3rd power point", true, function(a,b,c,a2,b2,c2){ return a2*a2 });
+registerCentre("X33", "Perspector of the orthic and intangents triangles", false, function(a,b,c,a2,b2,c2){ return (b + c - a) / (b2 + c2 - a2) });
+registerCentre("X34", "X4-beth conjugate of X4", false, function(a,b,c,a2,b2,c2){ return 1 / ((b + c - a) * (b2 + c2 - a2)) });
+registerCentre("X35", "(X1, X3)-harmonic conjugate of X36", true, function(a,b,c,a2,b2,c2){ return a2 * (b2 + c2 - a2 + b*c) });
+registerCentre("X36", "Inverse-in-X3 of X1", true, function(a,b,c,a2,b2,c2){ return a2 * (b2 + c2 - a2 - b*c) });
+registerCentre("X37", "Crosspoint of X1 and X2", false, function(a,b,c,a2,b2,c2){ return b + c });
+registerCentre("X38", "Crosspoint of X1 and X75", false, function(a,b,c,a2,b2,c2){ return b2 + c2 });
+registerCentre("X39", "Brocard midpoint", true, function(a,b,c,a2,b2,c2){ return a2*(b2 + c2) });
+registerCentre("X40", "Bevan point", false, function(a,b,c,a2,b2,c2){ return b/(c + a - b) + c/(a + b - c) - a/(b + c - a) });
+registerCentre("X41", "X6-Ceva conjugate of X31", false, function(a,b,c,a2,b2,c2){ return a2*(b+c-a) });
+registerCentre("X42", "Crosspoint of X1 and X6", true, function(a,b,c,a2,b2,c2){ return a2*(b+c) });
+registerCentre("X43", "X6-Ceva conjugate of X1", false, function(a,b,c,a2,b2,c2){ return a*b + a*c - b*c });
+registerCentre("X44", "X6-line conjugate of X1", false, function(a,b,c,a2,b2,c2){ return b + c - 2*a });
+registerCentre("X45", "X9-beth conjugate of X1", false, function(a,b,c,a2,b2,c2){ return 2*b + 2*c - a });
+registerCentre("X47", "X110-beth conjugate of X34", false, function(a,b,c,a2,b2,c2){ return a2*(a2*a2 + b2*b2 + c2*c2 - 2*a2*(b2+c2)) });
+registerCentre("X48", "Crosspoint of X1 and X63", false, function(a,b,c,a2,b2,c2){ return a2*(b2 + c2 - a2) });
+registerCentre("X51", "Centroid of orthic triangle", true, function(a,b,c,a2,b2,c2){ return a2*(a2*(b2 + c2) - (b2 - c2)*(b2 - c2)) });
+registerCentre("X55", "Insimilicentre(circumcircle, incircle)", true, function(a,b,c,a2,b2,c2){ return a2*(b+c-a) });
+registerCentre("X56", "Exsimilicentre(circumcircle, incircle", true, function(a,b,c,a2,b2,c2){ return a2/(b+c-a) });
+registerCentre("X57", "Isogonal conjugate of X9", false, function(a,b,c,a2,b2,c2){ return 1/(b+c-a) });
+registerCentre("X58", "Isogonal conjugate of X10", false, function(a,b,c,a2,b2,c2){ return a/(b+c) });
+registerCentre("X59", "Isogonal conjugate of X11", true, function(a,b,c,a2,b2,c2){ return a2/((b + c - a)*(b - c)*(b - c)) });
+registerCentre("X60", "Isogonal conjugate of X12", true, function(a,b,c,a2,b2,c2){ return a2/((b + c)*(b + c)/(b + c - a)) });
+registerCentre("X63", "Isogonal conjugate of X19", false, function(a,b,c,a2,b2,c2){ return b2 + c2 - a2 });
+registerCentre("X64", "Isogonal conjugate of X20", true, function(a,b,c,a2,b2,c2){ return a2 / (-3*a2*a2 + 2*a2*(b2 + c2) + (b2 - c2)*(b2 - c2)) });
+registerCentre("X65", "Orthocentre of the intouch triangle", false, function(a,b,c,a2,b2,c2){ return (b + c) / (b + c - a) });
+registerCentre("X66", "Isogonal conjugate of X22", true, function(a,b,c,a2,b2,c2){ return 1 / (b2*b2 + c2*c2 - a2*a2) });
+registerCentre("X67", "Isogonal conjugate of X23", true, function(a,b,c,a2,b2,c2){ return 1 / (b2*b2 + c2*c2 - a2*a2 - b2*c2) });
+registerCentre("X69", "Symmedian point of the anticomplementary triangle", true, function(a,b,c,a2,b2,c2){ return b2+c2-a2 });
+registerCentre("X74", "Isogonal conjugate of X30", true, function(a,b,c,a2,b2,c2){ return a2 / (2*a2*a2 - (b2 - c2)*(b2 - c2) - a2*(b2 + c2)) });
+registerCentre("X75", "Isotomic conjugate of X1, isogonal conjugate of X31", true, function(a,b,c,a2,b2,c2){ return 1/a });
+registerCentre("X76", "3rd Brocard point, isogonal conjugate of X32", true, function(a,b,c,a2,b2,c2){ return 1/a2 });
+registerCentre("X77", "Isogonal conjugate of X33", false, function(a,b,c,a2,b2,c2){ return (b2 + c2 - a2) / (b + c - a) });
+registerCentre("X78", "Isogonal conjugate of X34", false, function(a,b,c,a2,b2,c2){ return (b + c - a) * (b2 + c2 - a2) });
+registerCentre("X79", "Isogonal conjugate of X35", true, function(a,b,c,a2,b2,c2){ return 1 / (b2 + c2 - a2 + b*c) });
+registerCentre("X80", "Reflection of X1 in X11", true, function(a,b,c,a2,b2,c2){ return 1 / (b2 + c2 - a2 - b*c) });
+registerCentre("X81", "Cevapoint of X1 and X6", false, function(a,b,c,a2,b2,c2){ return 1 / (b + c) });
+registerCentre("X82", "Isogonal conjugate of X38", false, function(a,b,c,a2,b2,c2){ return 1 / (b2 + c2) });
+registerCentre("X83", "Cevapoint of X2 and X6", true, function(a,b,c,a2,b2,c2){ return 1 / (b2 + c2) });
+registerCentre("X84", "Isogonal conjugate of X40", false, function(a,b,c,a2,b2,c2){ return 1 / (b/(c + a - b) + c/(a + b - c) - a/(b + c - a)) });
+registerCentre("X85", "Isotomic conjugate of X9, isogonal conjugate of X41", true, function(a,b,c,a2,b2,c2){ return b * c / (b + c - a) });
+registerCentre("X86", "Cevapoint of X1 and X2, isogonal conjugate of X42, isotomic conjugate of X10", false, function(a,b,c,a2,b2,c2){ return b * c / (b + c) });
+registerCentre("X87", "X2-cross conjugate of X1", false, function(a,b,c,a2,b2,c2){ return 1 / (a * b + a * c - b * c) });
+registerCentre("X88", "Isogonal conjugate of X44", false, function(a,b,c,a2,b2,c2){ return 1 / (b + c - 2*a) });
+registerCentre("X89", "Isogonal conjugate of X45", false, function(a,b,c,a2,b2,c2){ return 1 / (2*b + 2*c - a) });
+registerCentre("X98", "Tarry point", true, function(a,b,c,a2,b2,c2){ return 1 / (b2*b2 + c2*c2 - a2*b2 - a2*c2) });
+registerCentre("X99", "Steiner point", true, function(a,b,c,a2,b2,c2){ return 1 / (b2 - c2) });
+registerCentre("X100", "Anticomplement of X11", false, function(a,b,c,a2,b2,c2){ return 1 / (b - c) });
+registerCentre("X101", "Psi(X1, X6)", true, function(a,b,c,a2,b2,c2){ return a2 / (b - c) });
+registerCentre("X105", "Lambda(X1, X6)", false, function(a,b,c,a2,b2,c2){ return 1 / (b2 + c2 - a*(b+c)) });
+registerCentre("X106", "Lambda(X1, X2)", true, function(a,b,c,a2,b2,c2){ return a2 / (2*a - b - c) });
+registerCentre("X109", "Psi(X1, X3)", true, function(a,b,c,a2,b2,c2){ return a2 / ((b - c) * (b + c - a)) });
+registerCentre("X110", "Focus of Keipert parabola", true, function(a,b,c,a2,b2,c2){ return a2 / (b2 - c2) });
+registerCentre("X111", "Parry point", true, function(a,b,c,a2,b2,c2){ return a2 / (2*a2 - b2 - c2) });
+registerCentre("X115", "Centre of Keipert hyperbola", true, function(a,b,c,a2,b2,c2){ return (b2 - c2) * (b2 - c2) });
+registerCentre("X125", "Centre of Jerabek hyperbola", true, function(a,b,c,a2,b2,c2){ return (b2+c2-a2)*(b2-c2)*(b2-c2) });
+registerCentre("X141", "Complement of X6", true, function(a,b,c,a2,b2,c2){ return b2 + c2 });
+registerCentre("X145", "Anticomplement of X8", true, function(a,b,c,a2,b2,c2){ return 3*a - b - c });
+registerCentre("X162", "Cevapoint of X108 and X109", false, function(a,b,c,a2,b2,c2){ return 1/((b2-c2)*(b2+c2-a2)) });
+registerCentre("X163", "Trilinear product X6 * X110", false, function(a,b,c,a2,b2,c2){ return a2 / (b2 - c2) });
+registerCentre("X171", "(X2, X31)-harmonic conjugate of X238", false, function(a,b,c,a2,b2,c2){ return a2 + b + c });
+registerCentre("X172", "Trilinear product X6 * X171", true, function(a,b,c,a2,b2,c2){ return a2 * (a2 + b + c) });
+registerCentre("X181", "Apollonius point", true, function(a,b,c,a2,b2,c2){ return a2 * (b + c) * (b + c) / (b + c - a) });
+registerCentre("X192", "Congruent parallelians point", true, function(a,b,c,a2,b2,c2){ return (c * a + a * b - b * c) });
+registerCentre("X360", "Hofstadter zero point", true, function(a,b,c,a2,b2,c2){ return Math.acos((a2 - b2 - c2) / (2 * b * c)) });
+
+function subd(depth, x0,y0, x1,y1, x2,y2, accum, maxDepth) {
+	if (depth < maxDepth) {
+		var k = centre(depth, x0,y0, x1,y1, x2,y2);
+		if (!isFinite(k.x) || !isFinite(k.y)) {
+			console.log('Failure at depth ' + depth);
+			return;
+		}
+		accum.push(x0, y0, k.x, k.y, x1, y1, k.x, k.y, x2, y2, k.x, k.y);
+		subd(depth+1, x0,y0, x1,y1, k.x,k.y, accum, maxDepth);
+		subd(depth+1, x1,y1, x2,y2, k.x,k.y, accum, maxDepth);
+		subd(depth+1, x2,y2, x0,y0, k.x,k.y, accum, maxDepth);
+	}
+}
+
+function centre(depth, x0,y0, x1,y1, x2,y2) {
+	var a2 = (x1-x2)*(x1-x2)+(y1-y2)*(y1-y2),
+		b2 = (x2-x0)*(x2-x0)+(y2-y0)*(y2-y0),
+		c2 = (x0-x1)*(x0-x1)+(y0-y1)*(y0-y1),
+		a = Math.sqrt(a2),
+		b = Math.sqrt(b2),
+		c = Math.sqrt(c2),
+		wa = f(depth, a, b, c, a2, b2, c2),
+		wb = f(depth, b, c, a, b2, c2, a2),
+		wc = f(depth, c, a, b, c2, a2, b2),
+		norm = wa + wb + wc;
+	// HACK
+	if (norm < 1E-16) { wa = wb = wc = 1; norm = 3; }
+	return {'x': (wa * x0 + wb * x1 + wc * x2) / norm, 'y': (wa * y0 + wb * y1 + wc * y2) / norm };
+}
+
+// NB This returns barycentric coordinates: trilinear * a
+function f(depth, a, b, c, a2, b2, c2) {
+	var pattern = JSON.parse(document.getElementById('pattern').value),
+		cid = pattern[depth % pattern.length],
+		id = document.getElementById('c' + cid).value,
+		fn = centreRegistry[id],
+		val = fn(a, b, c, a2, b2, c2);
+	if (!fn.barycentric) val = val * a;
+	return val;
+}
+
+function line(ctxt, x0,y0, x1,y1, cx,cy, s, c, rescale) {
+	if (rescale) {
+		s *= rescale;
+		c *= rescale;
+	}
+	else {
+		x0 -= cx; y0 -= cy;
+		x1 -= cx; y1 -= cy;
+	}
+
+	ctxt.moveTo(x0 * c + y0 * s + cx, -x0 * s + y0 * c + cy);
+	ctxt.lineTo(x1 * c + y1 * s + cx, -x1 * s + y1 * c + cy);
+}
+
+function render() {
+	var canvas = document.getElementById('render'),
+		ctxt = canvas.getContext('2d'),
+		cx = 432, cy = 480,
+		// Changing this makes a big difference with some unstable centres
+		// Even bigger difference: rendering with scaled values vs normalised to radius of 1
+		scale = +(document.getElementById('scale').value),
+		sqrt3_2 = Math.sqrt(0.75),
+		prescaled = document.getElementById('prescaled').checked,
+		x1, y1, x2, y2,
+		maxDepth = +(document.getElementById('maxDepth').value),
+		i, accum;
+	if (prescaled) {
+		x1 = x2 = cx - scale * 0.5;
+		y1 = cy - scale * sqrt3_2;
+		y2 = cy + scale * sqrt3_2;
+		accum = [cx, cy, x1, y1, x1, y1, x2, y2];
+	}
+	else {
+		x1 = x2 = -0.5;
+		y1 = -sqrt3_2;
+		y2 = sqrt3_2;
+		accum = [0, 0, x1, y1, x1, y1, x2, y2];
+	}
+
+	subd(0, accum[0],accum[1], x1,y1, x2,y2, accum, maxDepth);
+
+	// Reset
+	ctxt.fillStyle = '#ffffff';
+	ctxt.lineWidth = 1;
+	ctxt.strokeStyle = 'rgba(0,0,0,' + document.getElementById('opacity').value + ')';
+	ctxt.setTransform(1, 0, 0, 1, 0, 0);
+	ctxt.fillRect(0, 0, ctxt.canvas.width, ctxt.canvas.height);
+
+	ctxt.beginPath();
+	for (i = 0; i < accum.length; i += 4) {
+		line(ctxt, accum[i], accum[i + 1], accum[i + 2], accum[i + 3], cx, cy, 0, 1, prescaled ? false : scale);
+		line(ctxt, accum[i], accum[i + 1], accum[i + 2], accum[i + 3], cx, cy, sqrt3_2, -0.5, prescaled ? false : scale);
+		line(ctxt, accum[i], accum[i + 1], accum[i + 2], accum[i + 3], cx, cy, -sqrt3_2, -0.5, prescaled ? false : scale);
+	}
+
+	ctxt.stroke();
+}
+
+document.getElementById('go').onclick = render;
+render();
+
+</script>
+</body>
+</html>
