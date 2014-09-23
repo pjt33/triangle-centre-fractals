@@ -39,8 +39,12 @@
 	<br />
 	<label for="scale">Scale</label>
 	<select id="scale" name="scale">
+		<option value="120">120</option>
+		<option value="240">240</option>
 		<option value="400">400</option>
 		<option value="480" selected>480</option>
+		<option value="720">720</option>
+		<option value="960">960</option>
 	</select>
 	<br />
 	<label for="prescaled">Prescaled</label>
@@ -87,6 +91,48 @@ function addCentreToSelect(selectId, value, text) {
 	sel.appendChild(opt);
 }
 
+// For angle and area, see Miscalculating Area and Angles of a Needle-like Triangle (aka triangle.pdf), W Kahan
+function angle(a,b,c) {
+	var t, mu;
+	// Calculating A rather than C, so c' = a; a' = b; b' = c;
+	if (b < c) { t = b; b = c; c = t; }
+	mu = (c >= a) ? a - (b - c): c - (b - a);
+	return Math.atan(Math.sqrt(((b-c)+a) * mu / ((b+(c+a))*((b-a)+c))))
+}
+
+function area(a,b,c) {
+	var t;
+	if (a < b) {
+		// abc, acb, cab
+		if (c < b) {
+			// acb, cab
+			if (a < c) {
+				// acb
+				t = b; b = c; c = t;
+			}
+			else {
+				// cab
+				t = a; a = c; c = b; b = t;
+			}
+		}
+		// else a<b<c, nothing to do
+	}
+	else if (a < c) {
+		// bac
+		t = a; a = b; b = t;
+	}
+	else if (b < c) {
+		// bca
+		t = a; a = b; b = c; c = t;
+	}
+	else {
+		// cba
+		t = a; a = c; c = t;
+	}
+
+	return Math.sqrt((a+(b+c))*(c-(a-b))*(c+(a-b))*(a+(b-c))) / 4;
+}
+
 registerCentre("X1", "Incentre", false, function(){ return 1 });
 registerCentre("X2", "Centroid", true, function(){ return 1 });
 registerCentre("X3", "Circumcentre", true, function(a,b,c,a2,b2,c2){ return a2 * (b2 + c2 - a2) });
@@ -99,7 +145,14 @@ registerCentre("X9", "Mittenpunkt", false, function(a,b,c,a2,b2,c2){ return b + 
 registerCentre("X10", "Spieker centre", true, function(a,b,c,a2,b2,c2){ return b + c });
 registerCentre("X11", "Feuerbach point", true, function(a,b,c,a2,b2,c2){ return (b + c - a)*(b - c)*(b - c) });
 registerCentre("X12", "Isogonal conjugate of X60", true, function(a,b,c,a2,b2,c2){ return (b + c)*(b + c)/(b + c - a) });
-// X13-X18
+registerCentre("X13", "Torricelli point, 1st isogonic centre", true, function(a,b,c,a2,b2,c2){ return a2 * (a2 + b2 + c2 + 4 * Math.sqrt(3) * area(a, b, c)) - 2 * (b2 - c2) * (b2 - c2) });
+registerCentre("X14", "2nd isogonic centre", true, function(a,b,c,a2,b2,c2){ return a2 * (a2 + b2 + c2 - 4 * Math.sqrt(3) * area(a, b, c)) - 2 * (b2 - c2) * (b2 - c2) });
+registerCentre("X15", "1st isodynamic point, isogonal conjugate of X13", true, function(a,b,c,a2,b2,c2){ return 1 / (a2 + b2 + c2 + 4 * Math.sqrt(3) * area(a, b, c) - 2 * (b2 - c2) * (b2 - c2) / a2) });
+registerCentre("X15a", "1st isodynamic point, alternate calculation", true, function(a,b,c,a2,b2,c2){ return a2 / (a2 * (a2 + b2 + c2 + 4 * Math.sqrt(3) * area(a, b, c)) - 2 * (b2 - c2) * (b2 - c2)) });
+registerCentre("X16", "2nd isodynamic point, isogonal conjugate of X14", true, function(a,b,c,a2,b2,c2){ return 1 / (a2 + b2 + c2 - 4 * Math.sqrt(3) * area(a, b, c) - 2 * (b2 - c2) * (b2 - c2) / a2) });
+registerCentre("X16a", "2nd isodynamic point, alternate calculation", true, function(a,b,c,a2,b2,c2){ return a2 / (a2 * (a2 + b2 + c2 - 4 * Math.sqrt(3) * area(a, b, c)) - 2 * (b2 - c2) * (b2 - c2)) });
+registerCentre("X17", "1st Napoleon point", false, function(a,b,c,a2,b2,c2){ return 1 / Math.sin(angle(a, b, c) + Math.PI / 6) /* TODO Surely there's a better way of doing this? */ });
+registerCentre("X18", "2nd Napoleon point", false, function(a,b,c,a2,b2,c2){ return 1 / Math.sin(angle(a, b, c) - Math.PI / 6) /* Ditto */ });
 registerCentre("X19", "Clawson point", false, function(a,b,c,a2,b2,c2){ return 1 / (b2 + c2 - a2) });
 registerCentre("X20", "De Longchamps point", true, function(a,b,c,a2,b2,c2){ return -3*a2*a2 + 2*a2*(b2 + c2) + (b2 - c2)*(b2 - c2) });
 registerCentre("X21", "Schiffler point", false, function(a,b,c,a2,b2,c2){ return (b+c-a) / (b+c) });
@@ -141,19 +194,19 @@ registerCentre("X57", "Isogonal conjugate of X9", false, function(a,b,c,a2,b2,c2
 registerCentre("X58", "Isogonal conjugate of X10", false, function(a,b,c,a2,b2,c2){ return a/(b+c) });
 registerCentre("X59", "Isogonal conjugate of X11", true, function(a,b,c,a2,b2,c2){ return a2/((b + c - a)*(b - c)*(b - c)) });
 registerCentre("X60", "Isogonal conjugate of X12", true, function(a,b,c,a2,b2,c2){ return a2/((b + c)*(b + c)/(b + c - a)) });
-// X61
-// X62
+registerCentre("X61", "Isogonal conjugate of X17", false, function(a,b,c,a2,b2,c2){ return Math.sin(angle(a, b, c) + Math.PI / 6) /* TODO Surely there's a better way of doing this? */ });
+registerCentre("X62", "Isogonal conjugate of X18", false, function(a,b,c,a2,b2,c2){ return Math.sin(angle(a, b, c) - Math.PI / 6) /* Ditto */ });
 registerCentre("X63", "Isogonal conjugate of X19", false, function(a,b,c,a2,b2,c2){ return b2 + c2 - a2 });
 registerCentre("X64", "Isogonal conjugate of X20", true, function(a,b,c,a2,b2,c2){ return a2 / (-3*a2*a2 + 2*a2*(b2 + c2) + (b2 - c2)*(b2 - c2)) });
 registerCentre("X65", "Orthocentre of the intouch triangle", false, function(a,b,c,a2,b2,c2){ return (b + c) / (b + c - a) });
 registerCentre("X66", "Isogonal conjugate of X22", true, function(a,b,c,a2,b2,c2){ return 1 / (b2*b2 + c2*c2 - a2*a2) });
 registerCentre("X67", "Isogonal conjugate of X23", true, function(a,b,c,a2,b2,c2){ return 1 / (b2*b2 + c2*c2 - a2*a2 - b2*c2) });
-// X68
+registerCentre("X68", "Prasolov point", true, function(a,b,c,a2,b2,c2){ var t = (b2 + c2 - a2); return t / (t*t - 2*b2*c2) });
 registerCentre("X69", "Symmedian point of the anticomplementary triangle", true, function(a,b,c,a2,b2,c2){ return b2+c2-a2 });
-// X70
-// X71
-// X72
-// X73
+registerCentre("X70", "Isogonal conjugate of X26", true, function(a,b,c,a2,b2,c2){ return 1 / (a2 - b2 - c2 + 0.5 * (b2*((c2 + a2 - b2)*(c2 + a2 - b2) / (c2*a2)) + c2*((b2 + a2 - c2)*(b2 + a2 - c2) / (b2*a2)) - a2*((b2 + c2 - a2)*(b2 + c2 - a2) / (b2*c2)))) });
+registerCentre("X71", "Isogonal conjugate of X27", true, function(a,b,c,a2,b2,c2){ return a2 * (b + c) * (b2 + c2 - a2) });
+registerCentre("X72", "Isogonal conjugate of X28", false, function(a,b,c,a2,b2,c2){ return (b + c) * (b2 + c2 - a2) });
+registerCentre("X73", "Isogonal conjugate of X29", true, function(a,b,c,a2,b2,c2) { return a2 * (b2 + c2 - a2) * ((a2 + c2 - b2)*b + (a2 + b2 - c2)*c) });
 registerCentre("X74", "Isogonal conjugate of X30", true, function(a,b,c,a2,b2,c2){ return a2 / (2*a2*a2 - (b2 - c2)*(b2 - c2) - a2*(b2 + c2)) });
 registerCentre("X75", "Isotomic conjugate of X1, isogonal conjugate of X31", true, function(a,b,c,a2,b2,c2){ return 1/a });
 registerCentre("X76", "3rd Brocard point, isogonal conjugate of X32", true, function(a,b,c,a2,b2,c2){ return 1/a2 });
@@ -170,7 +223,9 @@ registerCentre("X86", "Cevapoint of X1 and X2, isogonal conjugate of X42, isotom
 registerCentre("X87", "X2-cross conjugate of X1", false, function(a,b,c,a2,b2,c2){ return 1 / (a * b + a * c - b * c) });
 registerCentre("X88", "Isogonal conjugate of X44", false, function(a,b,c,a2,b2,c2){ return 1 / (b + c - 2*a) });
 registerCentre("X89", "Isogonal conjugate of X45", false, function(a,b,c,a2,b2,c2){ return 1 / (2*b + 2*c - a) });
-// X90 - X97
+registerCentre("X90", "Isogonal conjugate of X46", false, function(a,b,c,a2,b2,c2){ return 1 / (a2 * (a + b + c) - (b - c)*(b - c)*(b + c) - a*(b2 + c2)) });
+registerCentre("X91", "Isogonal conjugate of X47", true, function(a,b,c,a2,b2,c2){ return 1 / (a*(a2*a2 + b2*b2 + c2*c2 - 2*a2*(b2+c2))) });
+// X92 - X97
 registerCentre("X98", "Tarry point", true, function(a,b,c,a2,b2,c2){ return 1 / (b2*b2 + c2*c2 - a2*b2 - a2*c2) });
 registerCentre("X99", "Steiner point", true, function(a,b,c,a2,b2,c2){ return 1 / (b2 - c2) });
 registerCentre("X100", "Anticomplement of X11", false, function(a,b,c,a2,b2,c2){ return 1 / (b - c) });
@@ -189,16 +244,40 @@ registerCentre("X163", "Trilinear product X6 * X110", false, function(a,b,c,a2,b
 registerCentre("X171", "(X2, X31)-harmonic conjugate of X238", false, function(a,b,c,a2,b2,c2){ return a2 + b + c });
 registerCentre("X172", "Trilinear product X6 * X171", true, function(a,b,c,a2,b2,c2){ return a2 * (a2 + b + c) });
 registerCentre("X181", "Apollonius point", true, function(a,b,c,a2,b2,c2){ return a2 * (b + c) * (b + c) / (b + c - a) });
+registerCentre("X190", "Yff parabolic point", true, function(a,b,c,a2,b2,c2){ return 1 / (b - c) });
 registerCentre("X192", "Congruent parallelians point", true, function(a,b,c,a2,b2,c2){ return (c * a + a * b - b * c) });
+registerCentre("X210", "X10-Ceva conjugate of X37", false, function(a,b,c,a2,b2,c2){ return (b + c) * (b + c - a) });
+registerCentre("X213", "X6-Ceva conjugate of X42", true, function(a,b,c,a2,b2,c2){ return a2 * (b + c) });
+registerCentre("X320", "Isotomic conjugate of X80", true, function(a,b,c,a2,b2,c2){ return a2 + b*c - b2 - c2 });
 registerCentre("A360", "Borked implementation of Hofstadter zero point - is this in ETC?", true, function(a,b,c,a2,b2,c2){ return Math.acos((a2 - b2 - c2) / (2 * b * c)) });
-registerCentre("X360", "Hofstadter zero point", true, function(a,b,c,a2,b2,c2){
-	// See Miscalculating Area and Angles of a Needle-like Triangle (aka triangle.pdf), W Kahan
-	var t, mu;
-	// Calculating A rather than C, so c' = a; a' = b; b' = c;
-	if (b < c) { t = b; b = c; c = t; }
-	mu = (c >= a) ? a - (b - c): c - (b - a);
-	return Math.atan(Math.sqrt(((b-c)+a) * mu / ((b+(c+a))*((b-a)+c))))
-});
+registerCentre("X360", "Hofstadter zero point", true, function(a,b,c,a2,b2,c2){ return angle(a, b, c); });
+registerCentre("X381", "Centroid of Euler triangle, midpoint of X2 and X4", true, function(a,b,c,a2,b2,c2){ return a2 * (a2 + b2 + c2) - 2 * (b2 - c2) * (b2 - c2) });
+registerCentre("X512", "Isogonal conjugate of X99", true, function(a,b,c,a2,b2,c2){ return a2 * (b2 - c2) });
+registerCentre("X513", "Isogonal conjugate of X100", false, function(a,b,c,a2,b2,c2){ return b - c });
+registerCentre("X513b", "Variant on X513", false, function(a,b,c,a2,b2,c2){ return Math.abs(b - c) });
+registerCentre("X514", "Isogonal conjugate of X101", true, function(a,b,c,a2,b2,c2){ return b - c });
+registerCentre("X518", "Isogonal conjugate of X105", true, function(a,b,c,a2,b2,c2){ return a*(b2 + c2) - a2*(b+c) });
+registerCentre("X649", "Crossdifference of X1 and X2", true, function(a,b,c,a2,b2,c2){ return a2 * (b - c) });
+registerCentre("X692", "X110-Ceva conjugate of X101", false, function(a,b,c,a2,b2,c2){ return a2 / (b - c) });
+registerCentre("X693", "Isotomic conjugate of X100, isogonal conjugate of X692", true, function(a,b,c,a2,b2,c2){ return (b - c) / a });
+registerCentre("X1001", "Midpoint of X1 and X9", false, function(a,b,c,a2,b2,c2){ return a2 - a*(b+c) - 2*b*c });
+registerCentre("X1002", "Isogonal conjugate of X1001", false, function(a,b,c,a2,b2,c2){ return 1 / (a2 - a*(b+c) - 2*b*c) });
+registerCentre("X1003", "Intercept of Euler line and X6-X99", true, function(a,b,c,a2,b2,c2){ return a2*(3*a2 - b2 - c2) + 2*b2*c2 });
+registerCentre("X1010", "Intercept of Euler line and X1-X75", true, function(a,b,c,a2,b2,c2){ return a2 / (b + c) + (b + c) });
+registerCentre("X1014", "Isogonal conjugate of X210", false, function(a,b,c,a2,b2,c2){ return 1 / ((b+c)*(b+c-a)) });
+registerCentre("X1015", "Exsimilicentre of Moses circle and incircle", true, function(a,b,c,a2,b2,c2){ return a2*(b-c)*(b-c) });
+registerCentre("X1016", "X1-cross conjugate of X99", true, function(a,b,c,a2,b2,c2){ return 1 / ((b - c) * (b - c)) });
+registerCentre("X1017", "Alfirk point", true, function(a,b,c,a2,b2,c2){ return a2*(b+c-2*a)*(b+c-2*a) });
+registerCentre("X1018", "X512-cross conjugate of X1", false, function(a,b,c,a2,b2,c2){ return (b + c) / (b - c) });
+registerCentre("X1019", "X99-Ceva conjugate of X1, isogonal conjugate of X1018", false, function(a,b,c,a2,b2,c2){ return (b - c) / (b + c) });
+registerCentre("X1022", "Intersection of X1-X513 and X2-X514", false, function(a,b,c,a2,b2,c2){ return (b - c) / (2*a - b - c) });
+registerCentre("X1023", "Intersection of X1-X6 and X100-X101, isogonal conjugate of X1022", false, function(a,b,c,a2,b2,c2){ return (2*a - b - c) / (b - c) });
+registerCentre("X1086", "Centre of hyperbola A-B-C-X2-X7", true, function(a,b,c,a2,b2,c2){ return (b - c) * (b - c) });
+registerCentre("X1115", "Steiner curvature centroid", true, function(a,b,c,a2,b2,c2){ return Math.PI - area(a,b,c) });
+registerCentre("X1120", "X2-Blaikie transform of X1", true, function(a,b,c,a2,b2,c2){ return 1 / (b2 + c2 + a * (b + c) - 4 * b * c) });
+registerCentre("X1125", "Complement of X10", true, function(a,b,c,a2,b2,c2){ return 2*a + b + c });
+registerCentre("X1126", "Isogonal conjugate of X1125", true, function(a,b,c,a2,b2,c2){ return a2 / (2*a + b + c) });
+registerCentre("X1146", "Centre of hyperbola A-B-C-X2-X8", true, function(a,b,c,a2,b2,c2){ return (b - c)*(b - c)*(b + c - a)*(b + c - a) });
 
 function subd(depth, x0,y0, x1,y1, x2,y2, accum, maxDepth) {
 	if (depth < maxDepth) {
