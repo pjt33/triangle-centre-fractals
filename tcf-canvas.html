@@ -345,7 +345,8 @@ function render() {
 		prescaled = document.getElementById('prescaled').checked,
 		x1, y1, x2, y2,
 		maxDepth = +(document.getElementById('maxDepth').value),
-		i, accum;
+		i, accum,
+		controls, fragment;
 	if (prescaled) {
 		x1 = x2 = cx - scale * 0.5;
 		y1 = cy - scale * sqrt3_2;
@@ -376,9 +377,28 @@ function render() {
 	}
 
 	ctxt.stroke();
+
+	if (history && history.pushState) {
+		fragment = ['#'];
+		controls = document.getElementsByTagName('select');
+		for (i = 0; i < controls.length; i++) fragment.push(controls[i].id, '=', controls[i].value, '&');
+		history.pushState(null, null, fragment.join(''));
+	}
+}
+
+function loadStateFromFragment() {
+	var pairs, kv, i, control;
+	if (document.location.hash) {
+		pairs = document.location.hash.split('&');
+		for (i = 0; i < pairs.length; i++) {
+			kv = pairs[i].split('=');
+			if (kv.length == 2 && (control = document.getElementById(kv[0]))) control.value = kv[1];
+		}
+	}
 }
 
 document.getElementById('go').onclick = render;
+loadStateFromFragment();
 render();
 
 </script>
