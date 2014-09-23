@@ -25,6 +25,9 @@
 	<br />
 	<label for="opacity">Opacity</label>
 	<select id="opacity" name="opacity">
+		<option value="0.01">0.01</option>
+		<option value="0.02">0.02</option>
+		<option value="0.03">0.03</option>
 		<option value="0.05" selected>0.05</option>
 		<option value="0.1">0.1</option>
 		<option value="0.15">0.15</option>
@@ -51,13 +54,13 @@
 	<input id="prescaled" name="prescaled" type="checkbox" />
 	<br />
 	<label for="c0">C0</label>
-	<select id="c0" name="c0"></select>
+	<select id="c0" name="c0" class="rnd"></select>
 	<br />
 	<label for="c1">C1</label>
-	<select id="c1" name="c1"></select>
+	<select id="c1" name="c1" class="rnd"></select>
 	<br />
 	<label for="Pattern">Pattern</label>
-	<select id="pattern" name="pattern">
+	<select id="pattern" name="pattern" class="rnd">
 		<option value="[0]">C0 only (0)</option>
 		<option value="[0,1]">Alternating (0, 1)</option>
 		<option value="[1,0]">Alternating (1, 0)</option>
@@ -68,6 +71,7 @@
 	</select>
 	<br />
 	<input type="button" id="go" value="Render" />
+	<input type="button" id="rnd" value="Random" />
 
 	<p>NB The "Prescaled" option is to help identify numerical issues. If toggling that and changing the scale causes massive differences, it's obviously running into numerical problems. If the image doesn't have symmetry along the three altitudes of the original triangle, that would also imply numerical problems.</p>
 </div>
@@ -386,6 +390,18 @@ function render() {
 	}
 }
 
+function selectRandomParams() {
+	var controls = document.getElementsByTagName('select'), options, i;
+	for (i = 0; i < controls.length; i++) {
+		if ((' ' + controls[i].className + ' ').indexOf(' rnd ') >= 0) {
+			options = controls[i].getElementsByTagName('option');
+			controls[i].value = options[Math.floor(Math.random() * options.length)].value;
+		}
+	}
+
+	render();
+}
+
 function loadStateFromFragment() {
 	var pairs, kv, i, control;
 	if (document.location.hash) {
@@ -398,6 +414,7 @@ function loadStateFromFragment() {
 }
 
 document.getElementById('go').onclick = render;
+document.getElementById('rnd').onclick = selectRandomParams;
 loadStateFromFragment();
 render();
 
